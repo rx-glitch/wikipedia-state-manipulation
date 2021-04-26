@@ -1,0 +1,87 @@
+---
+title: "Final Project R-Code"
+author: "Ben Ditchfield"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=F}
+knitr::opts_chunk$set(fig.align="center", warning = F, message = F, dev = "cairo_pdf") 
+```
+
+# Load libraries
+```{r}
+library(GGally)
+library(network)
+library(sna)
+library(ggplot2)
+library(tidyverse)
+library(RColorBrewer)
+library(scales)
+```
+
+```{r}
+#Load the data
+network_heatmap <- read.csv("network_output_concat3.csv")
+
+network_heatmap1 <- network_heatmap[, names(network_heatmap) %in% c('China', 'India', 'Japan', 'France', 
+                                                                    'Country')]
+network_heatmap2 <- network_heatmap[, !(names(network_heatmap) %in% c('China', 'India', 'Japan', 'France'))]
+
+rownames(network_heatmap1) <- network_heatmap1$Country
+network_heatmap1 <- network_heatmap1 %>%
+           select(-Country)
+rownames(network_heatmap2) <- network_heatmap2$Country
+network_heatmap2 <- network_heatmap2 %>%
+           select(-Country)
+
+
+network_heatmap1 <- network_heatmap1[ , order(names(network_heatmap1))]
+network_heatmap1 <- network_heatmap1[order(rownames(network_heatmap1)),]  
+network_heatmap2 <- network_heatmap2[ , order(names(network_heatmap2))]
+network_heatmap2 <- network_heatmap2[order(rownames(network_heatmap2)),]  
+
+network_heatmap <- cbind(network_heatmap1, network_heatmap2)
+```
+
+```{r}
+# Prepare data for visualization
+network_heatmap_gg <- network_heatmap
+network_heatmap_gg <- data.frame(apply(network_heatmap, 1, rescale))
+network_heatmap_gg$Country <- rownames(network_heatmap_gg)
+network_heatmap_gg <- pivot_longer(network_heatmap_gg, !Country, names_to='Mentions', values_to='Count')
+
+network_heatmap_gg$Country <- fct_rev(factor(network_heatmap_gg$Country,
+                                     levels = c('China', 'France', 'India', 'Japan', 'Australia', 
+                                                'Austria', 'Brazil', 'Canada', 'Chile', 'EU',
+                                                'Finland', 'Germany', 'Ireland', 'Israel', 'Italy',
+                                                'NATO', 'Netherlands', 'New.Zealand', 'Norway',
+                                                'Poland', 'Russia', 'Sweden', 'Switzerland', 'Turkey',
+                                                'UK', 'Ukraine', 'UN', 'USA')))
+```
+
+```{r}
+# Generate the graph
+ggplot(network_heatmap_gg, 
+       aes(Country, Mentions, fill = Count)) + 
+  geom_tile() +
+  scale_fill_distiller(palette = "YlGnBu", direction = 1,
+                       guide = guide_colorbar(title.position = "top",
+                                              title.hjust = 0.5),
+                       labels = rev(c('100%', '75%', '50%', '25%', '0%'))) +
+  labs(fill = "") +
+  xlab('Country/Organization Mentioned') +
+  ylab('Editor') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        axis.ticks = element_blank(),
+        panel.grid.major.x = element_blank(),
+        panel.grid.major.y = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank())
+
+ggsave('map_mentions.pdf', height = 5, width = 7, device = cairo_pdf)
+```
